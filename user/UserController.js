@@ -1,8 +1,13 @@
 var express = require('express')
 var router = express.Router()
+var cookieParser = require('cookie-parser')
+var jsonpatch = require('json-patch')
+var imageFunc = require('./middleware/imageDownload')
 
 router.use(express.urlencoded({ extended: true }))
 router.use(express.json())
+app.use(cookieParser())
+app.use(express.static(path.join(__dirname, 'public')))
 var User = require('./User')
 
 router.post('/', (req, res) => {
@@ -23,6 +28,15 @@ router.post('/', (req, res) => {
 		}
 	)
 })
+
+router.post('/jsonpatch', verifyToken, (req, res) => {
+	jsonpatch.apply(req.body.jsonObject, req.body.jsonPatch)
+	res.json({
+		Patched: req.body.jsonObject,
+	})
+})
+
+router.post('/image', verifyToken, imageFunc, (req, res) => {})
 
 router.get('/', (req, res) => {
 	User.find({}, (err, users) => {
@@ -52,6 +66,14 @@ router.route('/:id')
 		})
 	})
 	.put((req, res) => {
+		User.findByIdAndUpdate(req.params.id, req.body, { new: true }, (err, user) => {
+			if (err)
+				return res
+					.status(500)
+					.send('There was a problem updating the user.')
+			res.status(200).send(user)
+		})
+	}).patch((req, res) => {
 		User.findByIdAndUpdate(req.params.id, req.body, { new: true }, (err, user) => {
 			if (err)
 				return res
